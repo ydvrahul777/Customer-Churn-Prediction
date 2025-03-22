@@ -1,4 +1,3 @@
-
 import streamlit as st
 import numpy as np
 import pickle
@@ -14,26 +13,25 @@ with open('robust_scaler.pkl', 'rb') as file:
 with open('label_encoders.pkl', 'rb') as file:
     encoders = pickle.load(file)
 
+# Features used in prediction
+cat_features = ['Partner', 'Dependents', 'MultipleLines', 'InternetService',
+                'OnlineSecurity', 'OnlineBackup', 'DeviceProtection', 'TechSupport',
+                'StreamingTV', 'StreamingMovies', 'Contract', 'PaperlessBilling', 'PaymentMethod']
+num_features = ['tenure', 'MonthlyCharges', 'TotalCharges', 'SeniorCitizen']
+
 # Prediction function
 def predict_churn(input_data):
-    # Convert input to DataFrame
     input_df = pd.DataFrame([input_data])
 
     # Encode categorical features
-    cat_features = ['gender', 'Partner', 'Dependents', 'PhoneService', 'MultipleLines', 'InternetService',
-                    'OnlineSecurity', 'OnlineBackup', 'DeviceProtection', 'TechSupport', 'StreamingTV',
-                    'StreamingMovies', 'Contract', 'PaperlessBilling', 'PaymentMethod']
-
     for col in cat_features:
-        input_df[col] = encoders[col].transform([input_df[col][0]])  # Encoding
+        input_df[col] = encoders[col].transform([input_df[col][0]])  
 
     # Scale numerical features
-    num_features = ['tenure', 'MonthlyCharges', 'TotalCharges', 'SeniorCitizen']
     input_df[num_features] = scaler.transform(input_df[num_features])
 
     # Make prediction
     prediction = model.predict(input_df)[0]
-
     return "Churn" if prediction == 1 else "Not Churn"
 
 # Streamlit UI
@@ -42,12 +40,9 @@ def main():
     st.subheader("Enter customer details to predict churn.")
 
     # User inputs
-    gender = st.selectbox('Gender', encoders['gender'].classes_)
-    senior_citizen = st.selectbox('Senior Citizen', [0, 1])
     partner = st.selectbox('Partner', encoders['Partner'].classes_)
     dependents = st.selectbox('Dependents', encoders['Dependents'].classes_)
     tenure = st.number_input('Tenure (months)', min_value=0, max_value=100, step=1)
-    phone_service = st.selectbox('Phone Service', encoders['PhoneService'].classes_)
     multiple_lines = st.selectbox('Multiple Lines', encoders['MultipleLines'].classes_)
     internet_service = st.selectbox('Internet Service', encoders['InternetService'].classes_)
     online_security = st.selectbox('Online Security', encoders['OnlineSecurity'].classes_)
@@ -61,15 +56,16 @@ def main():
     payment_method = st.selectbox('Payment Method', encoders['PaymentMethod'].classes_)
     monthly_charges = st.number_input('Monthly Charges ($)', min_value=0.0, format="%.2f")
     total_charges = st.number_input('Total Charges ($)', min_value=0.0, format="%.2f")
+    senior_citizen = st.selectbox('Senior Citizen', [0, 1])
 
     # Prepare input dictionary
     input_data = {
-        'gender': gender,
+        'tenure': tenure,
+        'MonthlyCharges': monthly_charges,
+        'TotalCharges': total_charges,
         'SeniorCitizen': senior_citizen,
         'Partner': partner,
         'Dependents': dependents,
-        'tenure': tenure,
-        'PhoneService': phone_service,
         'MultipleLines': multiple_lines,
         'InternetService': internet_service,
         'OnlineSecurity': online_security,
@@ -80,9 +76,7 @@ def main():
         'StreamingMovies': streaming_movies,
         'Contract': contract,
         'PaperlessBilling': paperless_billing,
-        'PaymentMethod': payment_method,
-        'MonthlyCharges': monthly_charges,
-        'TotalCharges': total_charges
+        'PaymentMethod': payment_method
     }
 
     # Predict on button click
