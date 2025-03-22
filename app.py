@@ -13,11 +13,13 @@ with open('robust_scaler.pkl', 'rb') as file:
 with open('label_encoders.pkl', 'rb') as file:
     encoders = pickle.load(file)
 
-# Define feature names
+# Define correct feature order (MUST match training data)
 num_features = ['tenure', 'MonthlyCharges', 'TotalCharges', 'SeniorCitizen']
 cat_features = ['Partner', 'Dependents', 'MultipleLines', 'InternetService',
                 'OnlineSecurity', 'OnlineBackup', 'DeviceProtection', 'TechSupport',
                 'StreamingTV', 'StreamingMovies', 'Contract', 'PaperlessBilling', 'PaymentMethod']
+
+all_features = cat_features + num_features  # Ensure correct order
 
 # Prediction function
 def predict_churn(input_data):
@@ -25,19 +27,24 @@ def predict_churn(input_data):
 
     # Encode categorical features
     for col in cat_features:
-        if input_df[col][0] in encoders[col].classes_:
-            input_df[col] = encoders[col].transform([input_df[col][0]])
-        else:
-            input_df[col] = -1  # Assign unknown category to -1
+        if col in encoders:
+            if input_df[col][0] in encoders[col].classes_:
+                input_df[col] = encoders[col].transform([input_df[col][0]])
+            else:
+                input_df[col] = -1  # Assign unknown categories to -1
 
-    # Convert numerical features to float
-    input_df[num_features] = input_df[num_features].astype(float)
+    # Convert numerical features
+    for col in num_features:
+        try:
+            input_df[col] = float(input_df[col])  # Convert to float
+        except ValueError:
+            input_df[col] = 0.0  # Handle invalid input gracefully
 
-    # Scale numerical features
+    # Reorder columns to match training data
+    input_df = input_df[all_features]
+
+    # Scale numerical features correctly
     input_df[num_features] = scaler.transform(input_df[num_features])
-
-    # Ensure correct feature order
-    input_df = input_df[cat_features + num_features]
 
     # Make prediction
     prediction = model.predict(input_df)[0]
@@ -49,12 +56,13 @@ def main():
     st.title("Customer Churn Prediction")
     st.subheader("Enter customer details to predict churn.")
 
-    # User inputs
+    # User inputs (numerical)
     tenure = st.number_input('Tenure (months)', min_value=0, max_value=100, step=1)
     monthly_charges = st.number_input('Monthly Charges ($)', min_value=0.0, format="%.2f")
     total_charges = st.number_input('Total Charges ($)', min_value=0.0, format="%.2f")
     senior_citizen = st.selectbox('Senior Citizen', [0, 1])
 
+    # User inputs (categorical)
     partner = st.selectbox('Partner', encoders['Partner'].classes_)
     dependents = st.selectbox('Dependents', encoders['Dependents'].classes_)
     multiple_lines = st.selectbox('Multiple Lines', encoders['MultipleLines'].classes_)
