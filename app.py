@@ -3,7 +3,7 @@ import numpy as np
 import pickle
 import pandas as pd
 
-# Load the trained model, scaler, and encoders
+# Load trained models and encoders
 with open('random_forest_model.pkl', 'rb') as file:
     model = pickle.load(file)
 
@@ -13,11 +13,11 @@ with open('robust_scaler.pkl', 'rb') as file:
 with open('label_encoders.pkl', 'rb') as file:
     encoders = pickle.load(file)
 
-# Features used in prediction
+# Define feature names
+num_features = ['tenure', 'MonthlyCharges', 'TotalCharges', 'SeniorCitizen']
 cat_features = ['Partner', 'Dependents', 'MultipleLines', 'InternetService',
                 'OnlineSecurity', 'OnlineBackup', 'DeviceProtection', 'TechSupport',
                 'StreamingTV', 'StreamingMovies', 'Contract', 'PaperlessBilling', 'PaymentMethod']
-num_features = ['tenure', 'MonthlyCharges', 'TotalCharges', 'SeniorCitizen']
 
 # Prediction function
 def predict_churn(input_data):
@@ -25,14 +25,24 @@ def predict_churn(input_data):
 
     # Encode categorical features
     for col in cat_features:
-        input_df[col] = encoders[col].transform([input_df[col][0]])  
+        if input_df[col][0] in encoders[col].classes_:
+            input_df[col] = encoders[col].transform([input_df[col][0]])
+        else:
+            input_df[col] = -1  # Assign unknown category to -1
+
+    # Convert numerical features to float
+    input_df[num_features] = input_df[num_features].astype(float)
 
     # Scale numerical features
     input_df[num_features] = scaler.transform(input_df[num_features])
 
+    # Ensure correct feature order
+    input_df = input_df[cat_features + num_features]
+
     # Make prediction
     prediction = model.predict(input_df)[0]
-    return "Churn" if prediction == 1 else "Not Churn"
+
+    return "Yes (Churn)" if prediction == 1 else "No (Not Churn)"
 
 # Streamlit UI
 def main():
@@ -40,9 +50,13 @@ def main():
     st.subheader("Enter customer details to predict churn.")
 
     # User inputs
+    tenure = st.number_input('Tenure (months)', min_value=0, max_value=100, step=1)
+    monthly_charges = st.number_input('Monthly Charges ($)', min_value=0.0, format="%.2f")
+    total_charges = st.number_input('Total Charges ($)', min_value=0.0, format="%.2f")
+    senior_citizen = st.selectbox('Senior Citizen', [0, 1])
+
     partner = st.selectbox('Partner', encoders['Partner'].classes_)
     dependents = st.selectbox('Dependents', encoders['Dependents'].classes_)
-    tenure = st.number_input('Tenure (months)', min_value=0, max_value=100, step=1)
     multiple_lines = st.selectbox('Multiple Lines', encoders['MultipleLines'].classes_)
     internet_service = st.selectbox('Internet Service', encoders['InternetService'].classes_)
     online_security = st.selectbox('Online Security', encoders['OnlineSecurity'].classes_)
@@ -54,9 +68,6 @@ def main():
     contract = st.selectbox('Contract', encoders['Contract'].classes_)
     paperless_billing = st.selectbox('Paperless Billing', encoders['PaperlessBilling'].classes_)
     payment_method = st.selectbox('Payment Method', encoders['PaymentMethod'].classes_)
-    monthly_charges = st.number_input('Monthly Charges ($)', min_value=0.0, format="%.2f")
-    total_charges = st.number_input('Total Charges ($)', min_value=0.0, format="%.2f")
-    senior_citizen = st.selectbox('Senior Citizen', [0, 1])
 
     # Prepare input dictionary
     input_data = {
