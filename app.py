@@ -31,7 +31,7 @@ def predict_churn(input_data):
             if input_df[col][0] in encoders[col].classes_:
                 input_df[col] = encoders[col].transform([input_df[col][0]])
             else:
-                input_df[col] = -1  # Assign unknown categories to -1
+                input_df[col] = encoders[col].transform([encoders[col].classes_[0]])
 
     # Convert numerical features
     for col in num_features:
@@ -43,8 +43,8 @@ def predict_churn(input_data):
     # Reorder columns to match training data
     input_df = input_df[all_features]
 
-    # Scale numerical features correctly
-    input_df[num_features] = scaler.transform(input_df[num_features])
+    # ✅ FIXED: Use .values to avoid feature name check error
+    input_df[num_features] = scaler.transform(input_df[num_features].values)
 
     # Make prediction
     prediction = model.predict(input_df)[0]
@@ -53,8 +53,8 @@ def predict_churn(input_data):
 
 # Streamlit UI
 def main():
-    st.title("Customer Churn Prediction")
-    st.subheader("Enter customer details to predict churn.")
+    st.title("📊 Customer Churn Prediction App")
+    st.subheader("Enter customer details to predict churn risk:")
 
     # User inputs (numerical)
     tenure = st.number_input('Tenure (months)', min_value=0, max_value=100, step=1)
