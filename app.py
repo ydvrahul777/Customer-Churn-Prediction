@@ -19,7 +19,7 @@ cat_features = ['SeniorCitizen', 'Partner', 'Dependents', 'MultipleLines',
                 'InternetService', 'OnlineSecurity', 'OnlineBackup', 'DeviceProtection',
                 'TechSupport', 'StreamingTV', 'StreamingMovies', 'Contract',
                 'PaperlessBilling', 'PaymentMethod']
-all_features = cat_features + num_features  # Order matters
+all_features = num_features + cat_features    
 
 # Function to preprocess input and predict
 def predict_churn(input_data):
