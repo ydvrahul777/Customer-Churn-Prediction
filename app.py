@@ -1,74 +1,81 @@
-# app.py
-
 import streamlit as st
-import pickle
 import numpy as np
+import pickle
 import pandas as pd
 
-# Load model and preprocessing tools
-with open('final_model.pkl', 'rb') as file:
+# Load trained model, scaler, and encoders
+with open('random_forest_model.pkl', 'rb') as file:
     model = pickle.load(file)
 
-with open('scaler.pkl', 'rb') as file:
+with open('robust_scaler.pkl', 'rb') as file:
     scaler = pickle.load(file)
 
 with open('label_encoders.pkl', 'rb') as file:
     encoders = pickle.load(file)
 
 # Define features
+num_features = ['tenure', 'MonthlyCharges', 'TotalCharges']
 cat_features = ['gender', 'SeniorCitizen', 'Partner', 'Dependents', 'PhoneService',
                 'MultipleLines', 'InternetService', 'OnlineSecurity', 'OnlineBackup',
                 'DeviceProtection', 'TechSupport', 'StreamingTV', 'StreamingMovies',
                 'Contract', 'PaperlessBilling', 'PaymentMethod']
+all_features = cat_features + num_features  # Order matters
 
-num_features = ['tenure', 'MonthlyCharges', 'TotalCharges']
+# Prediction logic
+def predict_churn(input_data):
+    input_df = pd.DataFrame([input_data])
 
-all_features = cat_features + num_features
-
-# Prediction function
-def predict_churn(input_dict):
-    df = pd.DataFrame([input_dict])
-
-    # Encode categorical columns
+    # Label encode categorical features
     for col in cat_features:
         if col in encoders:
-            if df[col][0] in encoders[col].classes_:
-                df[col] = encoders[col].transform([df[col][0]])
+            le = encoders[col]
+            if input_df[col][0] in le.classes_:
+                input_df[col] = le.transform([input_df[col][0]])
             else:
-                df[col] = -1  # unknown category
-        df[col] = df[col].astype('object')  # Convert back to object after encoding
+                input_df[col] = -1  # Unknown category
+            input_df[col] = input_df[col].astype('object')  # Convert back to object
 
     # Scale numerical features
-    df[num_features] = scaler.transform(df[num_features])
+    input_df[num_features] = scaler.transform(input_df[num_features])
 
     # Reorder columns
-    df = df[all_features]
+    input_df = input_df[all_features]
 
-    # Make prediction
-    prediction = model.predict(df)[0]
+    prediction = model.predict(input_df)[0]
     return "Yes, the customer will churn." if prediction == 1 else "No, the customer will not churn."
-
 
 # Streamlit UI
 def main():
-    st.title("Customer Churn Predictor")
-    st.subheader("Provide customer details to check churn probability.")
+    st.title("📉 Customer Churn Prediction App")
+    st.markdown("Enter customer details to predict if they are likely to churn.")
 
-    input_data = {}
+    # Collect inputs
+    input_data = {
+        'gender': st.selectbox('Gender', encoders['gender'].classes_),
+        'SeniorCitizen': st.selectbox('Senior Citizen', encoders['SeniorCitizen'].classes_),
+        'Partner': st.selectbox('Partner', encoders['Partner'].classes_),
+        'Dependents': st.selectbox('Dependents', encoders['Dependents'].classes_),
+        'PhoneService': st.selectbox('Phone Service', encoders['PhoneService'].classes_),
+        'MultipleLines': st.selectbox('Multiple Lines', encoders['MultipleLines'].classes_),
+        'InternetService': st.selectbox('Internet Service', encoders['InternetService'].classes_),
+        'OnlineSecurity': st.selectbox('Online Security', encoders['OnlineSecurity'].classes_),
+        'OnlineBackup': st.selectbox('Online Backup', encoders['OnlineBackup'].classes_),
+        'DeviceProtection': st.selectbox('Device Protection', encoders['DeviceProtection'].classes_),
+        'TechSupport': st.selectbox('Tech Support', encoders['TechSupport'].classes_),
+        'StreamingTV': st.selectbox('Streaming TV', encoders['StreamingTV'].classes_),
+        'StreamingMovies': st.selectbox('Streaming Movies', encoders['StreamingMovies'].classes_),
+        'Contract': st.selectbox('Contract', encoders['Contract'].classes_),
+        'PaperlessBilling': st.selectbox('Paperless Billing', encoders['PaperlessBilling'].classes_),
+        'PaymentMethod': st.selectbox('Payment Method', encoders['PaymentMethod'].classes_),
+        'tenure': st.number_input("Tenure (months)", min_value=0, max_value=100),
+        'MonthlyCharges': st.number_input("Monthly Charges ($)", min_value=0.0, step=1.0),
+        'TotalCharges': st.number_input("Total Charges ($)", min_value=0.0, step=1.0)
+    }
 
-    # Categorical input fields
-    for feature in cat_features:
-        input_data[feature] = st.selectbox(f"{feature}", encoders[feature].classes_)
-
-    # Numerical input fields
-    input_data['tenure'] = st.number_input("Tenure (months)", min_value=0, step=1)
-    input_data['MonthlyCharges'] = st.number_input("Monthly Charges", min_value=0.0, format="%.2f")
-    input_data['TotalCharges'] = st.number_input("Total Charges", min_value=0.0, format="%.2f")
-
-    if st.button("Predict Churn"):
+    # Predict on button click
+    if st.button("Predict"):
         result = predict_churn(input_data)
-        st.success(result)
-
+        st.success(f"### Prediction: **{result}**")
 
 if __name__ == "__main__":
     main()
