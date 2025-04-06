@@ -37,7 +37,6 @@ def predict_churn(input_data):
                 input_df[col] = -1  # Handle unseen values
             input_df[col] = input_df[col].astype(object)
 
-    # Scale numerical features
     num_df = input_df[num_features].astype(float)
     scaled_nums = pd.DataFrame(scaler.transform(num_df), columns=num_features)
     input_df[num_features] = scaled_nums[num_features]
@@ -68,7 +67,6 @@ def main():
     # Dynamically collect categorical inputs based on encoders
     for col in cat_features:
         input_data[col] = st.selectbox(f"{col}", options=encoders[col].classes_)
-
     if st.button("Predict"):
         result = predict_churn(input_data)
         st.success(f"### Prediction: **{result}**")
