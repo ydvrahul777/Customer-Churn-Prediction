@@ -13,13 +13,14 @@ with open('robust_scaler.pkl', 'rb') as file:
 with open('label_encoders.pkl', 'rb') as file:
     encoders = pickle.load(file)
 
-# Define correct feature order (MUST match training data)
+# Define correct feature order
 num_features = ['tenure', 'MonthlyCharges', 'TotalCharges', 'SeniorCitizen']
 cat_features = ['Partner', 'Dependents', 'MultipleLines', 'InternetService',
                 'OnlineSecurity', 'OnlineBackup', 'DeviceProtection', 'TechSupport',
                 'StreamingTV', 'StreamingMovies', 'Contract', 'PaperlessBilling', 'PaymentMethod']
 
-all_features = cat_features + num_features  # Ensure correct order
+all_features = cat_features + num_features
+
 
 # Prediction function
 def predict_churn(input_data):
@@ -31,30 +32,35 @@ def predict_churn(input_data):
             if input_df[col][0] in encoders[col].classes_:
                 input_df[col] = encoders[col].transform([input_df[col][0]])
             else:
+                # Fallback to first class if unseen category
                 input_df[col] = encoders[col].transform([encoders[col].classes_[0]])
+        else:
+            input_df[col] = -1  # Unknown
 
-    # Convert numerical features
+    # Convert numeric values
     for col in num_features:
         try:
-            input_df[col] = float(input_df[col])  # Convert to float
+            input_df[col] = float(input_df[col])
         except ValueError:
-            input_df[col] = 0.0  # Handle invalid input gracefully
+            input_df[col] = 0.0
 
-    # Reorder columns to match training data
+    # Ensure correct column order
     input_df = input_df[all_features]
 
-    # ✅ FIXED: Use .values to avoid feature name check error
+    # Scale numerical features (raw values to avoid feature name mismatch)
     input_df[num_features] = scaler.transform(input_df[num_features].values)
 
-    # Make prediction
-    prediction = model.predict(input_df)[0]
+    # Debugging step (optional):
+    # st.write("Processed input:", input_df)
 
+    prediction = model.predict(input_df)[0]
     return "Yes (Churn)" if prediction == 1 else "No (Not Churn)"
+
 
 # Streamlit UI
 def main():
     st.title("📊 Customer Churn Prediction App")
-    st.subheader("Enter customer details to predict churn risk:")
+    st.subheader("Enter customer details to predict churn:")
 
     # User inputs (numerical)
     tenure = st.number_input('Tenure (months)', min_value=0, max_value=100, step=1)
@@ -98,11 +104,10 @@ def main():
         'PaymentMethod': payment_method
     }
 
-    # Predict on button click
-    if st.button('Predict'):
+    if st.button('🔍 Predict'):
         result = predict_churn(input_data)
-        st.success(f"### Prediction: **{result}**")
+        st.success(f"### Prediction Result: **{result}**")
 
-# Run the app
+
 if __name__ == '__main__':
     main()
